@@ -44,7 +44,7 @@ impl Player {
             bail!("Origin was {:?}", origin);
         }
 
-        let dead: i32 = read_memory(base_address + character_info::DEAD_1);
+        let dead: i32 = read_memory(base_address + character_info::DEATH);
         if dead != 0 {
             bail!("Dead was {}", dead);
         }

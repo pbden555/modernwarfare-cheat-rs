@@ -44,33 +44,33 @@ pub fn hack_main(mut _game: Game, window: Window) -> Result<()> {
     // Start render loop
     start_overlay_thread(
         shared_state.clone(),
-        window,
+        window
     );
     let no_recoil_state_sender = no_recoil::start_no_recoil_thread();
 
     loop {
         timer.wait();
 
-        let CheatState { config, mut game, mut aimbot_context } = shared_state.lock().unwrap().clone();
+        let mut state = shared_state.lock().unwrap().clone();
 
-        game.update_addresses();
-        let game_info = match game.get_game_info() {
+        state.game.update_addresses();
+        let game_info = match state.game.get_game_info() {
             Ok(info) => info,
             Err(_) => continue
         };
 
         no_recoil_state_sender.send(NoRecoilState {
-            enabled: config.no_recoil_enabled,
-            client_info_base: game.addresses.client_info_base,
+            enabled: state.config.no_recoil_enabled,
+            client_info_base: state.game.addresses.client_info_base,
             in_game: true,
         }).expect("Failed to send NoRecoilState");
 
-        aimbot::aimbot(&game_info, &config, &mut aimbot_context);
+        aimbot::aimbot(&game_info, &state.config, &mut state.aimbot_context);
 
         {
-            let mut shared_state = shared_state.lock().unwrap();
-            shared_state.aimbot_context = aimbot_context;
-            shared_state.game = game;
+            let mut current_state = shared_state.lock().unwrap();
+            current_state.aimbot_context = state.aimbot_context;
+            current_state.game = state.game;
         }
     }
 }
@@ -93,36 +93,36 @@ pub fn start_overlay_thread(shared_state: Arc<Mutex<CheatState>>, window: Window
         imgui.main_loop(|ui, ctx| {
             use memlib::overlay::imgui::*;
 
-            let CheatState { mut config, .. } = shared_state.lock().unwrap().clone();
+            let mut state = shared_state.lock().unwrap().clone();
 
-            let prev_config = config.clone();
+            let prev_config = state.config.clone();
 
             Window::new(im_str!("test"))
                 .build(&ui, || {
-                    ui.draw_gui(&mut config);
+                    ui.draw_gui(&mut state.config);
                 });
 
-            if config != prev_config {
-                // save to file
+            if state.config != prev_config {
                 debug!("Saving config");
-                config.save();
+                state.config.save();
+            }
 
-                // save to shared state
+            {
                 let mut new_state = shared_state.lock().unwrap();
-                new_state.config = config;
+                new_state.config = state.config;
             }
         }, |overlay| {
-            let CheatState {game, config, aimbot_context} = shared_state.lock().unwrap().clone();
+            let mut state = shared_state.lock().unwrap().clone();
 
-            let game_info = match game.get_game_info() {
+            let game_info = match state.game.get_game_info() {
                 Ok(n) => n,
                 Err(e) => {
                     return;
                 }
             };
 
-            esp::esp(&game_info, overlay, &config, &aimbot_context);
-            closest_player::closest_player(&game_info, &config, overlay);
+            esp::esp(&game_info, overlay, &state.config, &state.aimbot_context);
+            closest_player::closest_player(&game_info, &state.config, overlay);
         });
     });
 }

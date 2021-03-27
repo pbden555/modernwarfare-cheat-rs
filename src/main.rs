@@ -14,16 +14,15 @@ use memlib::overlay::imgui::{Imgui, ImguiConfig};
 use memlib::overlay::window::Window;
 use win_key_codes::VK_INSERT;
 use msgbox::IconType;
-use memlib::winutil::HWND;
 
 mod sdk;
 mod hacks;
 mod config;
 
 pub const PROCESS_NAME: &str = "ModernWarfare.exe";
-pub const CHEAT_TICKRATE: u64 = 120;
+pub const CHEAT_TICKRATE: u64 = 50;
 
-const LOG_LEVEL: LevelFilter = LevelFilter::Info;
+const LOG_LEVEL: LevelFilter = LevelFilter::Debug;
 
 fn run() -> Result<()> {
     // Initialize the logger
@@ -32,9 +31,7 @@ fn run() -> Result<()> {
     // Create a handle to the game
     let handle = Handle::from_interface(DriverProcessHandle::attach(PROCESS_NAME)?);
 
-    let mut window = Window::hijack_nvidia().unwrap_or_else(|_| Window::create().expect("Failed to create window"));
-    let cod_window = find_cod_window().expect("Could not find cod window");
-    window.target_hwnd = Some(cod_window);
+    let window = Window::hijack_nvidia()?;
     window.bypass_screenshots(true);
 
     memlib::system::init().unwrap();
@@ -60,20 +57,4 @@ fn main() {
             1
         }
     })
-}
-
-
-fn find_cod_window() -> Option<HWND> {
-    let mut found_window = None;
-
-    memlib::winutil::enumerate_window_titles(|title, hwnd| {
-        if title.starts_with(&[67, 63, 97, 63, 108, 63, 108, 63, 32, 63, 111, 63, 102, 63, 32, 63, 68, 63, 117, 63]) {
-            found_window = Some(hwnd);
-            return false;
-        }
-
-        true
-    });
-
-    found_window
 }
